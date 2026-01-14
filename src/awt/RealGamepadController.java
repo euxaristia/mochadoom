@@ -66,9 +66,6 @@ public class RealGamepadController implements GamepadController {
     // Repeat timer for analog stick menu navigation
     private int repeatCounter = 0;
     private static final int REPEAT_DELAY = 10; // Polls before repeat (~166ms at 60fps)
-
-    // Track Cross button state to know when to send SC_1
-    private boolean crossPressed = false;
     
     public RealGamepadController(EventObserver<EventHandler> eventObserver) {
         this.eventObserver = eventObserver;
@@ -428,7 +425,9 @@ public class RealGamepadController implements GamepadController {
             
             // Log button presses for debugging
             if (pressed && !oldPressed) {
-                LOGGER.fine("Button pressed: " + identifier + " (index " + buttonIndex + ")");
+                LOGGER.info("BUTTON PRESS: " + identifier + " (index " + buttonIndex + ")");
+            } else if (!pressed && oldPressed) {
+                LOGGER.info("BUTTON RELEASE: " + identifier + " (index " + buttonIndex + ")");
             }
             
             // Generate key events
@@ -640,18 +639,9 @@ public class RealGamepadController implements GamepadController {
      * Generate button press event
      */
     private void generateButtonPressEvent(int button) {
-        if (button == BUTTON_A) {
-            crossPressed = true;
-            // Cross button: Send both ENTER (for menus) and SC_1 (for quit screen)
-            // Send ENTER first for normal menu navigation
-            generateKeyEvent(Signals.ScanCode.SC_ENTER, true);
-            // Also send SC_1 for quit confirmation screen compatibility
-            generateKeyEvent(Signals.ScanCode.SC_1, true);
-        } else {
-            Signals.ScanCode scanCode = getButtonScanCode(button);
-            if (scanCode != null) {
-                generateKeyEvent(scanCode, true);
-            }
+        Signals.ScanCode scanCode = getButtonScanCode(button);
+        if (scanCode != null) {
+            generateKeyEvent(scanCode, true);
         }
     }
 
@@ -659,16 +649,9 @@ public class RealGamepadController implements GamepadController {
      * Generate button release event
      */
     private void generateButtonReleaseEvent(int button) {
-        if (button == BUTTON_A) {
-            crossPressed = false;
-            // Cross button: Release both ENTER and SC_1
-            generateKeyEvent(Signals.ScanCode.SC_ENTER, false);
-            generateKeyEvent(Signals.ScanCode.SC_1, false);
-        } else {
-            Signals.ScanCode scanCode = getButtonScanCode(button);
-            if (scanCode != null) {
-                generateKeyEvent(scanCode, false);
-            }
+        Signals.ScanCode scanCode = getButtonScanCode(button);
+        if (scanCode != null) {
+            generateKeyEvent(scanCode, false);
         }
     }
     
@@ -679,7 +662,7 @@ public class RealGamepadController implements GamepadController {
         if (eventObserver != null && scanCode != null) {
             event_t event = pressed ? scanCode.doomEventDown : scanCode.doomEventUp;
             eventObserver.feed(event);
-            LOGGER.fine("Sent event: " + scanCode + " " + (pressed ? "DOWN" : "UP"));
+            LOGGER.info("KEY EVENT (ScanCode): " + scanCode + " " + (pressed ? "DOWN" : "UP"));
         }
     }
     
@@ -713,7 +696,7 @@ public class RealGamepadController implements GamepadController {
         LOGGER.info("A Button = Fire/Confirm");
         LOGGER.info("B Button = Escape/Back");
         LOGGER.info("X Button = Use/Open");
-        LOGGER.info("Y Button = Weapon Slot 1");
+        LOGGER.info("Y Button = Quit Confirm / Weapon 1");
         LOGGER.info("LB Button = Previous Weapon");
         LOGGER.info("RB Button = Next Weapon");
         LOGGER.info("Back = Menu");
