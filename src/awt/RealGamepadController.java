@@ -531,7 +531,7 @@ public class RealGamepadController implements GamepadController {
      */
     private Signals.ScanCode getButtonScanCode(int button) {
         switch (button) {
-            case BUTTON_A: return Signals.ScanCode.SC_ENTER; // Fire/Confirm
+            case BUTTON_A: return Signals.ScanCode.SC_1; // Cross/Confirm - Uses SC_1 for quit screen compatibility
             case BUTTON_B: return Signals.ScanCode.SC_ESCAPE; // Back/Cancel
             case BUTTON_X: return Signals.ScanCode.SC_SPACE; // Use/Open
             case BUTTON_Y: return Signals.ScanCode.SC_1; // Weapon 1 / Quit confirm
@@ -637,15 +637,9 @@ public class RealGamepadController implements GamepadController {
      * Generate button press event
      */
     private void generateButtonPressEvent(int button) {
-        if (button == BUTTON_A) {
-            // Cross button: Send ENTER for normal navigation, SC_1 for quit confirmation
-            generateKeyEvent(Signals.ScanCode.SC_ENTER, true);
-            generateKeyEvent(Signals.ScanCode.SC_1, true);
-        } else {
-            Signals.ScanCode scanCode = getButtonScanCode(button);
-            if (scanCode != null) {
-                generateKeyEvent(scanCode, true);
-            }
+        Signals.ScanCode scanCode = getButtonScanCode(button);
+        if (scanCode != null) {
+            generateKeyEvent(scanCode, true);
         }
     }
 
@@ -653,15 +647,9 @@ public class RealGamepadController implements GamepadController {
      * Generate button release event
      */
     private void generateButtonReleaseEvent(int button) {
-        if (button == BUTTON_A) {
-            // Cross button: Release both ENTER and SC_1
-            generateKeyEvent(Signals.ScanCode.SC_ENTER, false);
-            generateKeyEvent(Signals.ScanCode.SC_1, false);
-        } else {
-            Signals.ScanCode scanCode = getButtonScanCode(button);
-            if (scanCode != null) {
-                generateKeyEvent(scanCode, false);
-            }
+        Signals.ScanCode scanCode = getButtonScanCode(button);
+        if (scanCode != null) {
+            generateKeyEvent(scanCode, false);
         }
     }
     
