@@ -178,16 +178,7 @@ public class RealGamepadController implements GamepadController {
                 if (isGamepad(controller)) {
                     gamepadCount++;
                     controllerStates.put(controller, new ControllerState());
-                    LOGGER.info("✓ Gamepad detected: " + getControllerName(controller) + " (Type: " + getControllerType(controller) + ")");
-                    
-                    // Log available buttons and axes
-                    Object[] components = getControllerComponents(controller);
-                    LOGGER.info("  Available components: " + components.length);
-                    for (int j = 0; j < Math.min(20, components.length); j++) {
-                        String id = getComponentIdentifier(components[j]);
-                        boolean isAnalog = isComponentAnalog(components[j]);
-                        LOGGER.info("    [" + j + "] " + id + " (" + (isAnalog ? "Analog" : "Digital") + ")");
-                    }
+                    LOGGER.info("✓ Gamepad detected: " + getControllerName(controller));
                 }
             }
             
@@ -420,11 +411,6 @@ public class RealGamepadController implements GamepadController {
 
             // Generate key events based on analog input
             generateAnalogKeyEvents(axisIndex, oldValue, value);
-
-            // Debug logging for joystick movement
-            if (axisIndex < 2 && (Math.abs(value) > 0.3f || Math.abs(oldValue) > 0.3f)) {
-                LOGGER.fine("Analog axis " + axisIndex + ": " + oldValue + " -> " + value + " (id: " + identifier + ")");
-            }
         }
     }
     
@@ -521,13 +507,22 @@ public class RealGamepadController implements GamepadController {
      * Get axis index from identifier
      */
     private int getAxisIndex(String identifier) {
+        // Handle lowercase identifiers (DualSense uses these)
+        if (identifier.equals("x")) return 0;  // Left stick X
+        if (identifier.equals("y")) return 1;  // Left stick Y
+        if (identifier.equals("rx")) return 2; // Right stick X
+        if (identifier.equals("ry")) return 3; // Right stick Y
+        if (identifier.equals("z")) return 4;  // Left trigger
+        if (identifier.equals("rz")) return 5; // Right trigger
+
+        // Also support traditional format
         if (identifier.equals("Axis.X")) return 0;
         if (identifier.equals("Axis.Y")) return 1;
         if (identifier.equals("Axis.RX")) return 2;
         if (identifier.equals("Axis.RY")) return 3;
         if (identifier.equals("Axis.Z")) return 4;
         if (identifier.equals("Axis.RZ")) return 5;
-        
+
         return -1;
     }
     
@@ -565,36 +560,30 @@ public class RealGamepadController implements GamepadController {
             // Handle left direction
             if (leftPressed && !wasLeftPressed) {
                 generateKeyEvent(Signals.ScanCode.SC_LEFT, true);
-                LOGGER.info("Left stick LEFT pressed (value: " + value + ")");
                 repeatCounter = 0;
             } else if (!leftPressed && wasLeftPressed) {
                 generateKeyEvent(Signals.ScanCode.SC_LEFT, false);
-                LOGGER.info("Left stick LEFT released (value: " + value + ")");
             } else if (leftPressed && wasLeftPressed) {
                 // Send repeat events periodically for menu scrolling
                 repeatCounter++;
                 if (repeatCounter >= REPEAT_DELAY) {
                     generateKeyEvent(Signals.ScanCode.SC_LEFT, true);
-                    LOGGER.fine("Left stick LEFT repeat");
-                    repeatCounter = REPEAT_DELAY - 2; // Keep pressing but slower rate
+                    repeatCounter = REPEAT_DELAY - 2;
                 }
             }
 
             // Handle right direction
             if (rightPressed && !wasRightPressed) {
                 generateKeyEvent(Signals.ScanCode.SC_RIGHT, true);
-                LOGGER.info("Left stick RIGHT pressed (value: " + value + ")");
                 repeatCounter = 0;
             } else if (!rightPressed && wasRightPressed) {
                 generateKeyEvent(Signals.ScanCode.SC_RIGHT, false);
-                LOGGER.info("Left stick RIGHT released (value: " + value + ")");
             } else if (rightPressed && wasRightPressed) {
                 // Send repeat events periodically for menu scrolling
                 repeatCounter++;
                 if (repeatCounter >= REPEAT_DELAY) {
                     generateKeyEvent(Signals.ScanCode.SC_RIGHT, true);
-                    LOGGER.fine("Left stick RIGHT repeat");
-                    repeatCounter = REPEAT_DELAY - 2; // Keep pressing but slower rate
+                    repeatCounter = REPEAT_DELAY - 2;
                 }
             }
         } else if (axisIndex == 1) { // Left stick Y - Up/Down movement
@@ -606,36 +595,30 @@ public class RealGamepadController implements GamepadController {
             // Handle up direction
             if (upPressed && !wasUpPressed) {
                 generateKeyEvent(Signals.ScanCode.SC_UP, true);
-                LOGGER.info("Left stick UP pressed (value: " + value + ")");
                 repeatCounter = 0;
             } else if (!upPressed && wasUpPressed) {
                 generateKeyEvent(Signals.ScanCode.SC_UP, false);
-                LOGGER.info("Left stick UP released (value: " + value + ")");
             } else if (upPressed && wasUpPressed) {
                 // Send repeat events periodically for menu scrolling
                 repeatCounter++;
                 if (repeatCounter >= REPEAT_DELAY) {
                     generateKeyEvent(Signals.ScanCode.SC_UP, true);
-                    LOGGER.fine("Left stick UP repeat");
-                    repeatCounter = REPEAT_DELAY - 2; // Keep pressing but slower rate
+                    repeatCounter = REPEAT_DELAY - 2;
                 }
             }
 
             // Handle down direction
             if (downPressed && !wasDownPressed) {
                 generateKeyEvent(Signals.ScanCode.SC_DOWN, true);
-                LOGGER.info("Left stick DOWN pressed (value: " + value + ")");
                 repeatCounter = 0;
             } else if (!downPressed && wasDownPressed) {
                 generateKeyEvent(Signals.ScanCode.SC_DOWN, false);
-                LOGGER.info("Left stick DOWN released (value: " + value + ")");
             } else if (downPressed && wasDownPressed) {
                 // Send repeat events periodically for menu scrolling
                 repeatCounter++;
                 if (repeatCounter >= REPEAT_DELAY) {
                     generateKeyEvent(Signals.ScanCode.SC_DOWN, true);
-                    LOGGER.fine("Left stick DOWN repeat");
-                    repeatCounter = REPEAT_DELAY - 2; // Keep pressing but slower rate
+                    repeatCounter = REPEAT_DELAY - 2;
                 }
             }
         } else if (axisIndex == 4 || axisIndex == 5) { // Triggers - Fire
