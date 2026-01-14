@@ -531,7 +531,7 @@ public class RealGamepadController implements GamepadController {
      */
     private Signals.ScanCode getButtonScanCode(int button) {
         switch (button) {
-            case BUTTON_A: return Signals.ScanCode.SC_ENTER; // Fire
+            case BUTTON_A: return null; // Special case: sends both ENTER and ESCAPE
             case BUTTON_B: return Signals.ScanCode.SC_ESCAPE; // Back/Cancel
             case BUTTON_X: return Signals.ScanCode.SC_SPACE; // Use/Open
             case BUTTON_Y: return Signals.ScanCode.SC_1; // Weapon 1
@@ -637,19 +637,31 @@ public class RealGamepadController implements GamepadController {
      * Generate button press event
      */
     private void generateButtonPressEvent(int button) {
-        Signals.ScanCode scanCode = getButtonScanCode(button);
-        if (scanCode != null) {
-            generateKeyEvent(scanCode, true);
+        if (button == BUTTON_A) {
+            // Cross button: Send both ENTER and ESCAPE for universal confirm/quit
+            generateKeyEvent(Signals.ScanCode.SC_ENTER, true);
+            generateKeyEvent(Signals.ScanCode.SC_ESCAPE, true);
+        } else {
+            Signals.ScanCode scanCode = getButtonScanCode(button);
+            if (scanCode != null) {
+                generateKeyEvent(scanCode, true);
+            }
         }
     }
-    
+
     /**
      * Generate button release event
      */
     private void generateButtonReleaseEvent(int button) {
-        Signals.ScanCode scanCode = getButtonScanCode(button);
-        if (scanCode != null) {
-            generateKeyEvent(scanCode, false);
+        if (button == BUTTON_A) {
+            // Cross button: Release both ENTER and ESCAPE
+            generateKeyEvent(Signals.ScanCode.SC_ENTER, false);
+            generateKeyEvent(Signals.ScanCode.SC_ESCAPE, false);
+        } else {
+            Signals.ScanCode scanCode = getButtonScanCode(button);
+            if (scanCode != null) {
+                generateKeyEvent(scanCode, false);
+            }
         }
     }
     
