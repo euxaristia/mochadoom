@@ -62,6 +62,10 @@ public class RealGamepadController implements GamepadController {
 
     // POV state tracking for D-pad
     private float lastPovValue = 0.0f;
+
+    // Repeat timer for analog stick menu navigation
+    private int repeatCounter = 0;
+    private static final int REPEAT_DELAY = 10; // Polls before repeat (~166ms at 60fps)
     
     public RealGamepadController(EventObserver<EventHandler> eventObserver) {
         this.eventObserver = eventObserver;
@@ -413,9 +417,14 @@ public class RealGamepadController implements GamepadController {
         if (axisIndex >= 0) {
             float oldValue = state.axisValues[axisIndex];
             state.axisValues[axisIndex] = value;
-            
+
             // Generate key events based on analog input
             generateAnalogKeyEvents(axisIndex, oldValue, value);
+
+            // Debug logging for joystick movement
+            if (axisIndex < 2 && (Math.abs(value) > 0.3f || Math.abs(oldValue) > 0.3f)) {
+                LOGGER.fine("Analog axis " + axisIndex + ": " + oldValue + " -> " + value + " (id: " + identifier + ")");
+            }
         }
     }
     
@@ -548,30 +557,86 @@ public class RealGamepadController implements GamepadController {
         float threshold = 0.3f;
 
         if (axisIndex == 0) { // Left stick X - Left/Right movement
-            if (oldValue < -threshold && value >= -threshold) {
-                generateKeyEvent(Signals.ScanCode.SC_LEFT, false); // Release left
+            boolean leftPressed = value < -threshold;
+            boolean rightPressed = value > threshold;
+            boolean wasLeftPressed = oldValue < -threshold;
+            boolean wasRightPressed = oldValue > threshold;
+
+            // Handle left direction
+            if (leftPressed && !wasLeftPressed) {
+                generateKeyEvent(Signals.ScanCode.SC_LEFT, true);
+                LOGGER.info("Left stick LEFT pressed (value: " + value + ")");
+                repeatCounter = 0;
+            } else if (!leftPressed && wasLeftPressed) {
+                generateKeyEvent(Signals.ScanCode.SC_LEFT, false);
+                LOGGER.info("Left stick LEFT released (value: " + value + ")");
+            } else if (leftPressed && wasLeftPressed) {
+                // Send repeat events periodically for menu scrolling
+                repeatCounter++;
+                if (repeatCounter >= REPEAT_DELAY) {
+                    generateKeyEvent(Signals.ScanCode.SC_LEFT, true);
+                    LOGGER.fine("Left stick LEFT repeat");
+                    repeatCounter = REPEAT_DELAY - 2; // Keep pressing but slower rate
+                }
             }
-            if (oldValue > threshold && value <= threshold) {
-                generateKeyEvent(Signals.ScanCode.SC_RIGHT, false); // Release right
+
+            // Handle right direction
+            if (rightPressed && !wasRightPressed) {
+                generateKeyEvent(Signals.ScanCode.SC_RIGHT, true);
+                LOGGER.info("Left stick RIGHT pressed (value: " + value + ")");
+                repeatCounter = 0;
+            } else if (!rightPressed && wasRightPressed) {
+                generateKeyEvent(Signals.ScanCode.SC_RIGHT, false);
+                LOGGER.info("Left stick RIGHT released (value: " + value + ")");
+            } else if (rightPressed && wasRightPressed) {
+                // Send repeat events periodically for menu scrolling
+                repeatCounter++;
+                if (repeatCounter >= REPEAT_DELAY) {
+                    generateKeyEvent(Signals.ScanCode.SC_RIGHT, true);
+                    LOGGER.fine("Left stick RIGHT repeat");
+                    repeatCounter = REPEAT_DELAY - 2; // Keep pressing but slower rate
+                }
             }
-            if (value < -threshold && oldValue >= -threshold) {
-                generateKeyEvent(Signals.ScanCode.SC_LEFT, true); // Press left
+        } else if (axisIndex == 1) { // Left stick Y - Up/Down movement
+            boolean upPressed = value < -threshold;
+            boolean downPressed = value > threshold;
+            boolean wasUpPressed = oldValue < -threshold;
+            boolean wasDownPressed = oldValue > threshold;
+
+            // Handle up direction
+            if (upPressed && !wasUpPressed) {
+                generateKeyEvent(Signals.ScanCode.SC_UP, true);
+                LOGGER.info("Left stick UP pressed (value: " + value + ")");
+                repeatCounter = 0;
+            } else if (!upPressed && wasUpPressed) {
+                generateKeyEvent(Signals.ScanCode.SC_UP, false);
+                LOGGER.info("Left stick UP released (value: " + value + ")");
+            } else if (upPressed && wasUpPressed) {
+                // Send repeat events periodically for menu scrolling
+                repeatCounter++;
+                if (repeatCounter >= REPEAT_DELAY) {
+                    generateKeyEvent(Signals.ScanCode.SC_UP, true);
+                    LOGGER.fine("Left stick UP repeat");
+                    repeatCounter = REPEAT_DELAY - 2; // Keep pressing but slower rate
+                }
             }
-            if (value > threshold && oldValue <= threshold) {
-                generateKeyEvent(Signals.ScanCode.SC_RIGHT, true); // Press right
-            }
-        } else if (axisIndex == 1) { // Left stick Y - Forward/Backward movement
-            if (oldValue < -threshold && value >= -threshold) {
-                generateKeyEvent(Signals.ScanCode.SC_UP, false); // Release up
-            }
-            if (oldValue > threshold && value <= threshold) {
-                generateKeyEvent(Signals.ScanCode.SC_DOWN, false); // Release down
-            }
-            if (value < -threshold && oldValue >= -threshold) {
-                generateKeyEvent(Signals.ScanCode.SC_UP, true); // Press up
-            }
-            if (value > threshold && oldValue <= threshold) {
-                generateKeyEvent(Signals.ScanCode.SC_DOWN, true); // Press down
+
+            // Handle down direction
+            if (downPressed && !wasDownPressed) {
+                generateKeyEvent(Signals.ScanCode.SC_DOWN, true);
+                LOGGER.info("Left stick DOWN pressed (value: " + value + ")");
+                repeatCounter = 0;
+            } else if (!downPressed && wasDownPressed) {
+                generateKeyEvent(Signals.ScanCode.SC_DOWN, false);
+                LOGGER.info("Left stick DOWN released (value: " + value + ")");
+            } else if (downPressed && wasDownPressed) {
+                // Send repeat events periodically for menu scrolling
+                repeatCounter++;
+                if (repeatCounter >= REPEAT_DELAY) {
+                    generateKeyEvent(Signals.ScanCode.SC_DOWN, true);
+                    LOGGER.fine("Left stick DOWN repeat");
+                    repeatCounter = REPEAT_DELAY - 2; // Keep pressing but slower rate
+                }
             }
         } else if (axisIndex == 4 || axisIndex == 5) { // Triggers - Fire
             boolean triggerPressed = value > threshold;
