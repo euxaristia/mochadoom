@@ -531,10 +531,10 @@ public class RealGamepadController implements GamepadController {
      */
     private Signals.ScanCode getButtonScanCode(int button) {
         switch (button) {
-            case BUTTON_A: return null; // Special case: sends both ENTER and ESCAPE
+            case BUTTON_A: return Signals.ScanCode.SC_ENTER; // Fire/Confirm
             case BUTTON_B: return Signals.ScanCode.SC_ESCAPE; // Back/Cancel
             case BUTTON_X: return Signals.ScanCode.SC_SPACE; // Use/Open
-            case BUTTON_Y: return Signals.ScanCode.SC_1; // Weapon 1
+            case BUTTON_Y: return Signals.ScanCode.SC_1; // Weapon 1 / Quit confirm
             case BUTTON_LB: return Signals.ScanCode.SC_COMMA; // Previous weapon
             case BUTTON_RB: return Signals.ScanCode.SC_PERIOD; // Next weapon
             case BUTTON_BACK: return Signals.ScanCode.SC_ESCAPE; // Menu
@@ -638,9 +638,9 @@ public class RealGamepadController implements GamepadController {
      */
     private void generateButtonPressEvent(int button) {
         if (button == BUTTON_A) {
-            // Cross button: Send both ENTER and ESCAPE for universal confirm/quit
+            // Cross button: Send ENTER for normal navigation, SC_1 for quit confirmation
             generateKeyEvent(Signals.ScanCode.SC_ENTER, true);
-            generateKeyEvent(Signals.ScanCode.SC_ESCAPE, true);
+            generateKeyEvent(Signals.ScanCode.SC_1, true);
         } else {
             Signals.ScanCode scanCode = getButtonScanCode(button);
             if (scanCode != null) {
@@ -654,9 +654,9 @@ public class RealGamepadController implements GamepadController {
      */
     private void generateButtonReleaseEvent(int button) {
         if (button == BUTTON_A) {
-            // Cross button: Release both ENTER and ESCAPE
+            // Cross button: Release both ENTER and SC_1
             generateKeyEvent(Signals.ScanCode.SC_ENTER, false);
-            generateKeyEvent(Signals.ScanCode.SC_ESCAPE, false);
+            generateKeyEvent(Signals.ScanCode.SC_1, false);
         } else {
             Signals.ScanCode scanCode = getButtonScanCode(button);
             if (scanCode != null) {
