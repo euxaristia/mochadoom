@@ -47,18 +47,21 @@ public class RealGamepadController implements GamepadController {
     
     // Controller state tracking
     private final Map<Object, ControllerState> controllerStates = new ConcurrentHashMap<>();
-    
+
     // Gamepad button mappings
-    private static final int BUTTON_A = KeyEvent.VK_ENTER;
-    private static final int BUTTON_B = KeyEvent.VK_ESCAPE;
-    private static final int BUTTON_X = KeyEvent.VK_SPACE;
-    private static final int BUTTON_Y = KeyEvent.VK_1;
-    private static final int BUTTON_LB = KeyEvent.VK_COMMA;
-    private static final int BUTTON_RB = KeyEvent.VK_PERIOD;
-    private static final int BUTTON_BACK = KeyEvent.VK_BACK_SPACE;
-    private static final int BUTTON_START = KeyEvent.VK_PAUSE;
-    private static final int BUTTON_LS = KeyEvent.VK_SHIFT;
-    private static final int BUTTON_RS = KeyEvent.VK_CONTROL;
+    private static final int BUTTON_A = 0;
+    private static final int BUTTON_B = 1;
+    private static final int BUTTON_X = 2;
+    private static final int BUTTON_Y = 3;
+    private static final int BUTTON_LB = 4;
+    private static final int BUTTON_RB = 5;
+    private static final int BUTTON_BACK = 6;
+    private static final int BUTTON_START = 7;
+    private static final int BUTTON_LS = 8;
+    private static final int BUTTON_RS = 9;
+
+    // POV state tracking for D-pad
+    private float lastPovValue = 0.0f;
     
     public RealGamepadController(EventObserver<EventHandler> eventObserver) {
         this.eventObserver = eventObserver;
@@ -380,7 +383,13 @@ public class RealGamepadController implements GamepadController {
                 String identifier = getComponentIdentifier(component);
                 float value = getComponentPollData(component);
                 boolean isAnalog = isComponentAnalog(component);
-                
+
+                // Special handling for POV (D-pad)
+                if (identifier.equals("pov")) {
+                    handlePovInput(value);
+                    continue;
+                }
+
                 if (isAnalog) {
                     // Handle analog input (joysticks, triggers)
                     handleAnalogInput(identifier, value, state);
@@ -537,41 +546,41 @@ public class RealGamepadController implements GamepadController {
      */
     private void generateAnalogKeyEvents(int axisIndex, float oldValue, float value) {
         float threshold = 0.3f;
-        
+
         if (axisIndex == 0) { // Left stick X - Left/Right movement
             if (oldValue < -threshold && value >= -threshold) {
-                generateKeyEvent(KeyEvent.VK_LEFT, false); // Release left
+                generateKeyEvent(Signals.ScanCode.SC_LEFT, false); // Release left
             }
             if (oldValue > threshold && value <= threshold) {
-                generateKeyEvent(KeyEvent.VK_RIGHT, false); // Release right
+                generateKeyEvent(Signals.ScanCode.SC_RIGHT, false); // Release right
             }
             if (value < -threshold && oldValue >= -threshold) {
-                generateKeyEvent(KeyEvent.VK_LEFT, true); // Press left
+                generateKeyEvent(Signals.ScanCode.SC_LEFT, true); // Press left
             }
             if (value > threshold && oldValue <= threshold) {
-                generateKeyEvent(KeyEvent.VK_RIGHT, true); // Press right
+                generateKeyEvent(Signals.ScanCode.SC_RIGHT, true); // Press right
             }
         } else if (axisIndex == 1) { // Left stick Y - Forward/Backward movement
             if (oldValue < -threshold && value >= -threshold) {
-                generateKeyEvent(KeyEvent.VK_DOWN, false); // Release forward
+                generateKeyEvent(Signals.ScanCode.SC_UP, false); // Release up
             }
             if (oldValue > threshold && value <= threshold) {
-                generateKeyEvent(KeyEvent.VK_UP, false); // Release backward
+                generateKeyEvent(Signals.ScanCode.SC_DOWN, false); // Release down
             }
             if (value < -threshold && oldValue >= -threshold) {
-                generateKeyEvent(KeyEvent.VK_UP, true); // Press forward
+                generateKeyEvent(Signals.ScanCode.SC_UP, true); // Press up
             }
             if (value > threshold && oldValue <= threshold) {
-                generateKeyEvent(KeyEvent.VK_DOWN, true); // Press backward
+                generateKeyEvent(Signals.ScanCode.SC_DOWN, true); // Press down
             }
         } else if (axisIndex == 4 || axisIndex == 5) { // Triggers - Fire
             boolean triggerPressed = value > threshold;
             boolean wasPressed = oldValue > threshold;
-            
+
             if (triggerPressed && !wasPressed) {
-                generateKeyEvent(KeyEvent.VK_SPACE, true); // Fire
+                generateKeyEvent(Signals.ScanCode.SC_SPACE, true); // Fire
             } else if (!triggerPressed && wasPressed) {
-                generateKeyEvent(KeyEvent.VK_SPACE, false); // Release fire
+                generateKeyEvent(Signals.ScanCode.SC_SPACE, false); // Release fire
             }
         }
     }
@@ -684,7 +693,46 @@ public class RealGamepadController implements GamepadController {
     public int getGamepadCount() {
         return controllerStates.size();
     }
-    
+
+    /**
+     * Handle POV (D-pad) input
+     * POV values: 0.0=centered, 0.25=up, 0.5=right, 0.75=down, 1.0=left
+     */
+    private void handlePovInput(float povValue) {
+        // Define POV direction constants
+        final float POV_UP = 0.25f;
+        final float POV_RIGHT = 0.5f;
+        final float POV_DOWN = 0.75f;
+        final float POV_LEFT = 1.0f;
+
+        // Check which direction is pressed based on POV value
+        boolean upPressed = povValue == POV_UP;
+        boolean downPressed = povValue == POV_DOWN;
+        boolean leftPressed = povValue == POV_LEFT;
+        boolean rightPressed = povValue == POV_RIGHT;
+
+        // Get previous direction from last POV value
+        boolean wasUp = lastPovValue == POV_UP;
+        boolean wasDown = lastPovValue == POV_DOWN;
+        boolean wasLeft = lastPovValue == POV_LEFT;
+        boolean wasRight = lastPovValue == POV_RIGHT;
+
+        // Release previous direction keys
+        if (wasUp && !upPressed) generateKeyEvent(Signals.ScanCode.SC_UP, false);
+        if (wasDown && !downPressed) generateKeyEvent(Signals.ScanCode.SC_DOWN, false);
+        if (wasLeft && !leftPressed) generateKeyEvent(Signals.ScanCode.SC_LEFT, false);
+        if (wasRight && !rightPressed) generateKeyEvent(Signals.ScanCode.SC_RIGHT, false);
+
+        // Press new direction keys
+        if (upPressed && !wasUp) generateKeyEvent(Signals.ScanCode.SC_UP, true);
+        if (downPressed && !wasDown) generateKeyEvent(Signals.ScanCode.SC_DOWN, true);
+        if (leftPressed && !wasLeft) generateKeyEvent(Signals.ScanCode.SC_LEFT, true);
+        if (rightPressed && !wasRight) generateKeyEvent(Signals.ScanCode.SC_RIGHT, true);
+
+        // Update last POV value
+        lastPovValue = povValue;
+    }
+
     /**
      * Controller state tracking
      */
