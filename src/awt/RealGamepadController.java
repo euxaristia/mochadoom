@@ -429,7 +429,15 @@ public class RealGamepadController implements GamepadController {
             } else if (!pressed && oldPressed) {
                 LOGGER.info("BUTTON RELEASE: " + identifier + " (index " + buttonIndex + ")");
             }
-            
+
+            // Special logging for weapon buttons
+            if (buttonIndex == BUTTON_X) {
+                LOGGER.info("  -> Weapon switch (X/Square) pressed: " + pressed);
+            }
+            if (buttonIndex == BUTTON_Y) {
+                LOGGER.info("  -> Weapon slot 1 (Y/Triangle) pressed: " + pressed);
+            }
+
             // Generate key events
             if (pressed && !oldPressed) {
                 generateButtonPressEvent(buttonIndex);
@@ -642,6 +650,8 @@ public class RealGamepadController implements GamepadController {
         Signals.ScanCode scanCode = getButtonScanCode(button);
         if (scanCode != null) {
             generateKeyEvent(scanCode, true);
+            // Log which ScanCode is being sent
+            LOGGER.info("BUTTON " + button + " sending ScanCode: " + scanCode);
         }
     }
 
