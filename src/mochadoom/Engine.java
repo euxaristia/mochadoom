@@ -22,6 +22,8 @@ import awt.EventBase.KeyStateInterest;
 import static awt.EventBase.KeyStateSatisfaction.WANTS_MORE_ATE;
 import static awt.EventBase.KeyStateSatisfaction.WANTS_MORE_PASS;
 import awt.EventHandler;
+import awt.GamepadController;
+import awt.RealGamepadController;
 import doom.CVarManager;
 import doom.CommandVariable;
 import doom.ConfigManager;
@@ -74,6 +76,7 @@ public class Engine {
     public final ConfigManager cm;
     public final DoomWindowController<?, EventHandler> windowController;
     private final DoomMain<?, ?> DOOM;
+    private GamepadController gamepadController;
 
     @SuppressWarnings("unchecked")
     private Engine(final String... argv) throws IOException {
@@ -101,6 +104,36 @@ public class Engine {
                 DOOM.graphicSystem.getScreenWidth(),
                 DOOM.graphicSystem.getScreenHeight()
             )*/;
+
+        // Initialize gamepad controller - try real JInput first, fallback on error
+        try {
+            LOGGER.info("Initializing gamepad controller...");
+            this.gamepadController = new RealGamepadController(windowController.getObserver());
+            gamepadController.start();
+            
+            if (gamepadController.hasGamepads()) {
+                LOGGER.info("✓ JInput gamepad support: " + gamepadController.getGamepadCount() + " controller(s) detected");
+                LOGGER.info("Gamepad controls active");
+            } else {
+                LOGGER.info("JInput: No controllers detected, using keyboard controls");
+            }
+            
+        } catch (NoClassDefFoundError e) {
+            LOGGER.warning("JInput library not available: " + e.getMessage());
+            LOGGER.info("Falling back to keyboard controls");
+            this.gamepadController = new awt.FallbackGamepadController(windowController.getObserver());
+            gamepadController.start();
+        } catch (UnsatisfiedLinkError e) {
+            LOGGER.warning("JInput native libraries not available: " + e.getMessage());
+            LOGGER.info("Falling back to keyboard controls");
+            this.gamepadController = new awt.FallbackGamepadController(windowController.getObserver());
+            gamepadController.start();
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to initialize JInput gamepad controller", e);
+            LOGGER.info("Falling back to keyboard controls");
+            this.gamepadController = new awt.FallbackGamepadController(windowController.getObserver());
+            gamepadController.start();
+        }
 
         windowController.getObserver().addInterest(
                 new KeyStateInterest<>(obs -> {
@@ -134,6 +167,17 @@ public class Engine {
                     return WANTS_MORE_PASS;
                 }, SC_PAUSE)
         );
+
+        // Add shutdown hook to properly clean up gamepad controller
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (gamepadController != null) {
+                try {
+                    gamepadController.stop();
+                } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "Error stopping gamepad controller", e);
+                }
+            }
+        }));
     }
 
     /**

@@ -1,19 +1,24 @@
 #!/bin/sh
 
-BUILD_DIR=build
-CLASSES_DIR=$BUILD_DIR/classes
-SOURCES_DIR=src
+# Use Gradle for build with dependencies
+echo "Building with Gradle (includes JInput gamepad support)..."
+gradle clean build
 
-# clean
-echo "Clean build directory: $BUILD_DIR..."
-rm -r $BUILD_DIR
-
-# compile
-echo "Compile files from: $SOURCES_DIR..."
-mkdir -p $CLASSES_DIR
-javac -d $CLASSES_DIR -cp $SOURCES_DIR $SOURCES_DIR/mochadoom/Engine.java
-
-# run
-echo "Run..."
-java -Dsun.java2d.opengl=true -cp $CLASSES_DIR mochadoom.Engine "$@"
+if [ $? -eq 0 ]; then
+    echo "Build successful!"
+    echo "Run..."
+# Use the fat JAR created by Gradle which includes all dependencies
+# Add system properties for proper JInput native library loading
+# Enable fine-grained logging for gamepad debugging
+java -Dsun.java2d.opengl=true \
+     --enable-native-access=ALL-UNNAMED \
+     -Djava.library.path=$(pwd)/natives \
+     -Djava.util.logging.level=INFO \
+     -Djava.util.logging.ConsoleHandler.level=FINE \
+     -Dawt.RealGamepadController.level=FINE \
+     -jar build/libs/mochadoom.jar "$@"
+else
+    echo "Build failed!"
+    exit 1
+fi
 
